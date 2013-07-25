@@ -1,7 +1,7 @@
 /* problem2.c : My solution to the "Drop the 9's" problem from Crash and Compile qualifying round	
 	Some things to note:
-		There is a lot of violation of the DRY principle here. I was rushing and didn't stop to 
-		refactor it. Variable names are pretty atrocious. The code style and formatting is inconsistent.
+		This is an updated version which uses functions to reduce duplication of code and make it a little
+		cleaner.
 		There is absolutely no error checking (and since it was for a speed programming contest there 
 		doesn't need to be frankly). Most importantly, the code is super unsafe :) and full of room for 
 		buffer errors and exploits.
@@ -19,12 +19,15 @@
 #include <ctype.h>
 #include <string.h>
 
+int SumSingleOrDoubleDigit(int sum, char* digitString);
+void AppendToResult(char* digitString, char* result, int num, char* str);
+
 int main(int argc, char** argv) {
-   char line[40];
-   char result[40];
-   char rt_result[40];
-   char tmpstr[2];
-   char two_digits[2];
+   char line[41] = "";
+   char result[41] = "";
+   char rt_result[41] = "";
+   char tmpstr[3] = "";
+   char digitString[3] = "";
    int i = 0;
    int j = 0;
    int mark = 0;
@@ -35,94 +38,55 @@ int main(int argc, char** argv) {
    /* read line from the input */
    scanf("%s", line);
    while ( line[0] != '#' && line[1] != '\0' ) {
-   /* parse and format the left hand side */
+   /* parse and format the left hand side terms */
       for (i=0; line[i] != '='; i++) {
          if (line[i] == '+') {
-            sprintf(two_digits, "%d", sum);
-            strcat(result,two_digits);
-            strcat(result,"+");
-            two_digits[1] = '\0';
+			AppendToResult(digitString, result, sum, "+");
             sum = 0;
          }
          if (isdigit(line[i]) && line[i] != '9') {
-            two_digits[0] = line[i];
-            sum += atoi(two_digits);
-            if (sum > 9) {
-               sprintf(two_digits, "%d", sum);
-               sum = 0;
-               for (j=0; j <2; j++) {
-                  tmpstr[0] = two_digits[j];
-                  sum += atoi(tmpstr);
-               }
-               two_digits[1] = '\0';
-            }
+            digitString[0] = line[i];
+            sum = SumSingleOrDoubleDigit(sum, digitString);
          }
       }
-      sprintf(two_digits, "%d", sum);
-      strcat(result, two_digits);
-      strcat(result, "=");
-      two_digits[1] = '\0';
+
+	  AppendToResult(digitString, result, sum, "=");
       sum = 0;
-      mark = i;
+      mark = i; /* save the start location of the right hand side for later */
       
+	  /* add the lhs result string terms to get the lhs result */
       for (i=0; result[i] != '='; i++) {
          if (isdigit(result[i]) && result[i] != '9') {
-            two_digits[0] = result[i];
-            lhs += atoi(two_digits);
-            if (lhs > 9) {
-               sprintf(two_digits, "%d", lhs);
-               lhs = 0;
-               for (j=0; j<2; j++) {
-                  tmpstr[0] = two_digits[j];
-                  lhs += atoi(tmpstr);
-               }
-               two_digits[1] = '\0';
-            }
+            digitString[0] = result[i];
+            lhs = SumSingleOrDoubleDigit(lhs, digitString);
          }
       }
-      sprintf(two_digits, "%d", lhs);
-      strcat(result, two_digits);
+	  AppendToResult(digitString, result, lhs, "");
 
-   /* parse and format the right hand side */ 
+   /* parse and format the right hand side terms */ 
    for (i = mark; line[i] != '\0'; i++) {
       if (isdigit(line[i]) && line[i] != '9') {
-         two_digits[0] = line[i];
-         sum += atoi(two_digits);
-        if (sum > 9) {
-          sprintf(two_digits, "%d", sum);
-          sum = 0;
-          for (j=0; j<2; j++) {
-             tmpstr[0] = two_digits[j];
-             sum += atoi(tmpstr);
-          }
-          two_digits[1] = '\0';
-        }
-        sprintf(two_digits, "%d", sum);
-        strcat(rt_result, two_digits);
-        sum = 0;
-        if ( line[i+1] != '\0') {
-           strcat(rt_result, "+");
-        }
-      }
+         digitString[0] = line[i];
+         sum = SumSingleOrDoubleDigit(sum, digitString);
+         AppendToResult(digitString, rt_result, sum, "");
+         sum = 0;
+         if ( line[i+1] != '\0') {
+            strcat(rt_result, "+");
+		 }
+	  }
    }
+
    strcat(rt_result,"=");
+   
+   /* sum the rhs terms from the result string to get the rhs result */
    for (i=0; rt_result[i] != '\0'; i++) {
       if (isdigit(rt_result[i])) {
-         two_digits[0] = rt_result[i];
-         rhs += atoi(two_digits);
-         if ( rhs > 9 ) {
-            sprintf(two_digits, "%d", rhs);
-            rhs = 0;
-            for (j=0; j<2; j++) {
-               tmpstr[0] = two_digits[j];
-               rhs += atoi(tmpstr);
-            }
-            two_digits[1] = '\0';
-         }
+         digitString[0] = rt_result[i];
+         rhs = SumSingleOrDoubleDigit(rhs, digitString);
       }
    }
-   sprintf(two_digits, "%d", rhs);
-   strcat(rt_result, two_digits);
+
+   AppendToResult(digitString, rt_result, rhs, "");
 
    if ( lhs == rhs ) {
       printf("TRUE: %s AND %s\n", result, rt_result);
@@ -139,3 +103,22 @@ int main(int argc, char** argv) {
    return 0;
 }
 
+int SumSingleOrDoubleDigit(int sum, char* digitString)
+{
+	sum += atoi(digitString);
+    if ( sum > 9 ) {
+        sprintf(digitString, "%d", sum);
+		sum = 0;
+		sum = (digitString[0] - '0') + (digitString[1] - '0');
+        digitString[1] = '\0';
+    }
+	return sum;
+}
+
+void AppendToResult(char* digitString, char* result, int num, char* str)
+{
+	sprintf(digitString, "%d", num);
+    strcat(result, digitString);
+    strcat(result, str);
+    digitString[1] = '\0';
+}
